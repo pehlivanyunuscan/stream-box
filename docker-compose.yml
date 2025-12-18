@@ -1,0 +1,29 @@
+services:
+  # 1. MOTOR (Video İşleme)
+  engine:
+    image: airensoft/ovenmediaengine:latest
+    container_name: stream-engine
+    restart: always
+    ports:
+      - "1935:1935" # OBS girişi
+
+  # 2. WEB (Sunucu)
+  web:
+    image: nginx:alpine
+    container_name: stream-web
+    restart: always
+    ports:
+      - "8090:80"   # <-- KRİTİK: Bilgisayarının 8090 portunu, Nginx'in 80 portuna bağladık
+    volumes:
+      - ./html:/usr/share/nginx/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - engine
+
+  # 3. MONITOR (Go Takipçisi)
+  monitor:
+    build: ./monitor
+    container_name: stream-monitor
+    restart: always
+    depends_on:
+      - engine
