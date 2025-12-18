@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel</title>
+    <style>
+        body { background: #1a1a1a; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .panel { background: #2d2d2d; padding: 40px; border-radius: 12px; width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid #444; }
+        h2 { margin-top: 0; color: #ff4444; text-align: center; }
+        label { display: block; margin: 20px 0 5px; color: #aaa; font-size: 0.9rem; }
+        input, textarea { width: 100%; padding: 12px; background: #111; border: 1px solid #444; color: white; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; margin-top: 25px; padding: 15px; background: linear-gradient(45deg, #cc0000, #ff4444); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 6px; font-size: 1rem; }
+        button:hover { filter: brightness(1.2); }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h2>🎛️ ADMIN PANEL</h2>
+        
+        <label>Stream Title</label>
+        <input type="text" id="title">
+        
+        <label>Stream Description</label>
+        <textarea id="desc" rows="3"></textarea>
+        
+        <label>🚨 BREAKING NEWS (Ticker)</label>
+        <input type="text" id="announcement" placeholder="Leave empty to disable...">
+        
+        <button onclick="save()">UPDATE INFO</button>
+    </div>
+
+    <script>
+        // Sayfa açılınca mevcut verileri çek
+        fetch('/api/info').then(r=>r.json()).then(d=>{
+            document.getElementById('title').value = d.title;
+            document.getElementById('desc').value = d.description;
+            document.getElementById('announcement').value = d.announcement;
+        });
+
+        function save() {
+            const data = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('desc').value,
+                announcement: document.getElementById('announcement').value
+            };
+            fetch('/api/update', {
+                method:'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(()=> alert("✅ Stream info updated successfully!") );
+        }
+    </script>
+</body>
+</html>
