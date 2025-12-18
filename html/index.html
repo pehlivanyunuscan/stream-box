@@ -3,203 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yunuscan Stream V5</title>
+    <title>Yunus Can Live</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        /* --- GENEL TASARIM --- */
-        :root { --primary: #e50914; --dark: #0f0f0f; --text: #f1f1f1; }
-        body { margin: 0; background: var(--dark); color: var(--text); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        
+        :root { --primary: #e50914; --dark: #0f0f0f; }
+        body { margin: 0; background: var(--dark); color: white; font-family: sans-serif; overflow: hidden; }
         .layout { display: flex; height: 100vh; width: 100%; }
+        .video-box { flex: 3; position: relative; background: black; }
+        video { width: 100%; height: 100%; }
+
+        /* Kayan Yazı (News Ticker) */
+        .ticker-wrap { position: absolute; bottom: 80px; left: 0; width: 100%; overflow: hidden; height: 40px; background: rgba(229, 9, 20, 0.9); display: none; z-index: 50; pointer-events: none; border-top: 2px solid white; border-bottom: 2px solid white; }
+        .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 20s linear infinite; font-weight: bold; line-height: 40px; font-size: 18px; text-transform: uppercase; color: white; }
+        @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
+
+        /* Üst Bilgi */
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; background: linear-gradient(black, transparent); z-index: 10; pointer-events: none; }
+        .title { font-size: 1.5rem; font-weight: bold; margin: 0; text-shadow: 0 2px 4px black; }
+        .desc { color: #ccc; margin: 5px 0 0; }
+        .badge { background: #555; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; vertical-align: middle; margin-right: 10px; }
+        .badge.live { background: var(--primary); }
+
+        /* Poster */
+        .poster { position: absolute; inset: 0; background: url('poster.jpg') center/cover; z-index: 5; display: flex; align-items: center; justify-content: center; flex-direction: column; }
         
-        /* --- SOL TARAF: VİDEO --- */
-        .video-wrapper { flex: 1; position: relative; background: #000; display: flex; flex-direction: column; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: contain; }
-
-        /* Üst Bilgi Barı (Gradient) */
-        .overlay-top { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); display: flex; justify-content: space-between; align-items: flex-start; z-index: 10; pointer-events: none; }
-        .stream-info { text-shadow: 0 2px 5px black; }
-        .stream-title { font-size: 1.4rem; font-weight: 700; margin: 0; }
-        .stream-desc { font-size: 0.9rem; color: #ccc; margin: 5px 0 0 0; }
-
-        /* Rozetler */
-        .badge { padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-        .badge-live { background: var(--primary); display: none; } /* JS ile açılacak */
-        .badge-offline { background: #555; }
-
-        /* Logo */
-        .channel-logo { width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 0 5px black); }
-
-        /* Offline Posteri */
-        .poster-layer { position: absolute; inset: 0; background: url('poster.jpg') no-repeat center center/cover; z-index: 5; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        .poster-msg { background: rgba(0,0,0,0.8); padding: 20px 40px; border-radius: 8px; text-align: center; border: 1px solid #333; }
-        .poster-msg h1 { margin: 0; color: var(--primary); }
-
-        /* Nerd Stats (İstatistikler) */
-        .nerd-stats { position: absolute; bottom: 80px; left: 20px; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; min-width: 180px; display: none; border: 1px solid #444; z-index: 20; }
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
-        .stat-val { color: #4caf50; font-weight: bold; }
-
-        /* Kontrol Butonları (Sağ Üst) */
-        .controls { position: absolute; top: 20px; right: 20px; z-index: 20; pointer-events: auto; display: flex; gap: 10px; }
-        .btn { background: rgba(0,0,0,0.6); border: 1px solid #555; color: white; padding: 8px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
-        .btn:hover { background: var(--primary); border-color: var(--primary); }
-
-        /* --- SAĞ TARAF: CHAT (V3) --- */
-        .chat-wrapper { width: 350px; background: #18181b; border-left: 1px solid #333; transition: width 0.3s; position: relative; }
-        .chat-wrapper.collapsed { width: 0; overflow: hidden; border: none; }
+        /* Chat */
+        .chat-box { flex: 1; border-left: 1px solid #333; background: #111; }
         iframe { width: 100%; height: 100%; border: none; }
-
-        /* Mobil Uyum */
-        @media (max-width: 768px) {
-            .layout { flex-direction: column; }
-            .chat-wrapper { width: 100%; height: 40%; }
-            .chat-wrapper.collapsed { height: 0; }
-            .overlay-top { padding: 10px; }
-            .stream-title { font-size: 1rem; }
-        }
     </style>
 </head>
 <body>
 
 <div class="layout">
-    <div class="video-wrapper">
-        
-        <div class="overlay-top">
-            <div class="stream-info">
-                <div>
-                    <span id="badgeLive" class="badge badge-live">CANLI</span>
-                    <span id="badgeOffline" class="badge badge-offline">OFFLINE</span>
-                </div>
-                <h1 id="title" class="stream-title">Yükleniyor...</h1>
-                <p id="desc" class="stream-desc">...</p>
-            </div>
-            <img src="logo.png" class="channel-logo" onerror="this.style.display='none'">
+    <div class="video-box">
+        <div class="overlay">
+            <span id="badge" class="badge">OFFLINE</span>
+            <span id="streamTitle" class="title">Connecting</span>
+            <p id="streamDesc" class="desc">...</p>
         </div>
 
-        <div class="controls">
-            <button class="btn" onclick="toggleStats()" title="İstatistikler (Nerd Stats)"><i class="fas fa-chart-line"></i></button>
-            <button class="btn" onclick="toggleChat()" title="Chat'i Aç/Kapat"><i class="fas fa-comment-alt"></i></button>
+        <div class="ticker-wrap" id="tickerBox">
+            <div class="ticker" id="tickerText"></div>
         </div>
 
-        <div id="statsPanel" class="nerd-stats">
-            <div style="border-bottom:1px solid #555; margin-bottom:5px; color:#ccc">VIDEO STATS</div>
-            <div class="stat-row"><span>Gecikme:</span> <span id="stLat" class="stat-val">0s</span></div>
-            <div class="stat-row"><span>Buffer:</span> <span id="stBuf" class="stat-val">0s</span></div>
-            <div class="stat-row"><span>Hız (BW):</span> <span id="stBw" class="stat-val">0 Mbps</span></div>
-            <div class="stat-row"><span>Drop:</span> <span id="stDrop" class="stat-val" style="color:red">0</span></div>
-            <div class="stat-row"><span>Res:</span> <span id="stRes" class="stat-val">--</span></div>
-        </div>
+        <div class="poster" id="posterLayer"><h1>WAITING FOR STREAM</h1></div>
 
-        <div id="posterLayer" class="poster-layer">
-            <div class="poster-msg">
-                <h1>YAYIN ÇEVRİMDIŞI</h1>
-                <p>OBS bağlantısı bekleniyor...</p>
-            </div>
-        </div>
-
-        <video id="video" autoplay muted playsinline controls></video>
+        <video id="video" controls autoplay playsinline></video>
     </div>
 
-    <div id="chatBox" class="chat-wrapper">
-        <div id="tlkio" data-channel="yunuscan-local-v5" style="width:100%;height:100%;"></div>
+    <div class="chat-box">
+        <div id="tlkio" data-channel="yunuscan-local-v6" style="width:100%;height:100%;"></div>
     </div>
 </div>
 
-<script async src="http://tlk.io/embed.js" type="text/javascript"></script>
+<script async src="http://tlk.io/embed.js"></script>
 <script>
     const videoSrc = '/app/stream/llhls.m3u8';
     const video = document.getElementById('video');
-    const poster = document.getElementById('posterLayer');
-    const badgeLive = document.getElementById('badgeLive');
-    const badgeOffline = document.getElementById('badgeOffline');
-
-    // 1. JSON Bilgisini Çek
-    fetch('info.json?t=' + Date.now())
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('title').innerText = data.title;
-            document.getElementById('desc').innerText = data.description;
-        })
-        .catch(err => console.log("Info yüklenemedi"));
-
-    // 2. Player Başlatma
-    let hls = null;
-    if (Hls.isSupported()) {
-        hls = new Hls({ lowLatencyMode: true });
-
-        // Hata Yönetimi: Yayın kesilirse posteri göster
-        hls.on(Hls.Events.ERROR, function (event, data) {
-            if (data.fatal) {
-                goOffline();
-                hls.destroy();
-                startRecoveryLoop(); // Arkada yayını aramaya başla
-            }
-        });
-
-        // Yayın Gelirse: Posteri gizle, yayını aç
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            goOnline();
-            stopRecoveryLoop();
-            startStatsLoop();
-        });
-
-        // İlk Yükleme
-        hls.loadSource(videoSrc);
-        hls.attachMedia(video);
-    }
-
-    // --- Fonksiyonlar ---
-
-    function goOnline() {
-        poster.style.display = 'none';
-        badgeLive.style.display = 'inline-block';
-        badgeOffline.style.display = 'none';
-        video.play().catch(()=>{});
-    }
-
-    function goOffline() {
-        poster.style.display = 'flex';
-        badgeLive.style.display = 'none';
-        badgeOffline.style.display = 'inline-block';
-    }
-
-    // Auto-Recovery (V4 Özelliği): Yayın gelene kadar arkada kontrol et
-    let checkInterval;
-    function startRecoveryLoop() {
-        if (checkInterval) return;
-        checkInterval = setInterval(() => {
-            fetch(videoSrc, { method: 'HEAD' }).then(res => {
-                if (res.ok) location.reload(); // Yayın geldiyse sayfayı yenile
-            }).catch(()=>{});
-        }, 3000);
-    }
-    function stopRecoveryLoop() { clearInterval(checkInterval); checkInterval = null; }
-
-    // Nerd Stats (V5 Özelliği)
-    function startStatsLoop() {
-        setInterval(() => {
-            if(!hls) return;
-            document.getElementById('stLat').innerText = hls.latency ? hls.latency.toFixed(2) + 's' : '0s';
-            document.getElementById('stBuf').innerText = video.buffered.length ? (video.buffered.end(video.buffered.length-1) - video.currentTime).toFixed(2) + 's' : '0s';
-            document.getElementById('stBw').innerText = hls.bandwidthEstimate ? (hls.bandwidthEstimate/1000000).toFixed(2) + ' Mbps' : '0';
-            document.getElementById('stDrop').innerText = video.webkitDroppedFrameCount || 0;
-            if(video.videoWidth) document.getElementById('stRes').innerText = video.videoWidth + 'x' + video.videoHeight;
-        }, 1000);
-    }
-
-    // UI Aç/Kapa
-    function toggleChat() { document.getElementById('chatBox').classList.toggle('collapsed'); }
-    function toggleStats() { 
-        const p = document.getElementById('statsPanel'); 
-        p.style.display = p.style.display === 'block' ? 'none' : 'block'; 
-    }
     
-    // Sayfa açılışında offline başlat, player bulunca online olur
-    goOffline(); 
-</script>
+    // --- API POLLING (Her 2 saniyede bir verileri güncelle) ---
+    setInterval(() => {
+        fetch('/api/info').then(r => r.json()).then(data => {
+            document.getElementById('streamTitle').innerText = data.title;
+            document.getElementById('streamDesc').innerText = data.description;
+            
+            // Canlılık Durumu
+            if (data.is_live) {
+                document.getElementById('posterLayer').style.display = 'none';
+                document.getElementById('badge').innerText = "CANLI";
+                document.getElementById('badge').classList.add('live');
+            } else {
+                document.getElementById('posterLayer').style.display = 'flex';
+                document.getElementById('badge').innerText = "OFFLINE";
+                document.getElementById('badge').classList.remove('live');
+            }
 
+            // Kayan Yazı Kontrolü
+            const ticker = document.getElementById('tickerBox');
+            if (data.announcement && data.announcement.trim() !== "") {
+                ticker.style.display = 'block';
+                document.getElementById('tickerText').innerText = data.announcement;
+            } else {
+                ticker.style.display = 'none';
+            }
+        }).catch(()=>{});
+    }, 2000);
+
+    // --- PLAYER (DVR Destekli) ---
+    if (Hls.isSupported()) {
+        const hls = new Hls({
+            lowLatencyMode: true,
+            backBufferLength: 30 // 30 seconds rewind buffer (Replay the goal)
+        });
+        
+        hls.on(Hls.Events.ERROR, (e, data) => {
+            if(data.fatal) hls.destroy();
+        });
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.play().catch(()=>{});
+        });
+
+        // Auto Recovery (Yayın gelince başlat)
+        setInterval(() => {
+            if(video.paused && document.getElementById('posterLayer').style.display == 'none') {
+                 hls.loadSource(videoSrc);
+                 hls.attachMedia(video);
+            }
+        }, 5000);
+    }
+</script>
 </body>
 </html>
