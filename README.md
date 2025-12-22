@@ -99,7 +99,3 @@ Updates stream info (from Admin panel).
 - **Go** - Backend API
 - **HLS.js** - Video player
 - **Docker Compose** - Orchestration
-
-## 📝 License
-
-MIT
