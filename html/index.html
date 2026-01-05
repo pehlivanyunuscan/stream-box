@@ -24,7 +24,9 @@
         .title { font-size: 1.5rem; font-weight: bold; margin: 0; text-shadow: 0 2px 4px black; }
         .desc { color: #ccc; margin: 5px 0 0; }
         .badge { background: #555; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; vertical-align: middle; margin-right: 10px; }
-        .badge.live { background: var(--primary); }
+        .badge.live { background: var(--primary); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .stats { color: #aaa; font-size: 0.9rem; margin-top: 5px; }
 
         /* Poster */
         .poster { position: absolute; inset: 0; background: url('poster.jpg') center/cover; z-index: 5; display: flex; align-items: center; justify-content: center; flex-direction: column; }
@@ -42,6 +44,7 @@
             <span id="badge" class="badge">OFFLINE</span>
             <span id="streamTitle" class="title">Connecting</span>
             <p id="streamDesc" class="desc">...</p>
+            <div id="streamStats" class="stats"></div>
         </div>
 
         <div class="ticker-wrap" id="tickerBox">
@@ -62,57 +65,127 @@
 <script>
     const videoSrc = '/app/stream/llhls.m3u8';
     const video = document.getElementById('video');
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 10;
+    
+    // Helper to format uptime
+    function formatUptime(seconds) {
+        if (seconds < 60) return `${seconds}s`;
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        if (mins < 60) return `${mins}m ${secs}s`;
+        const hours = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${hours}h ${m}m`;
+    }
     
     // --- API POLLING (Her 2 saniyede bir verileri güncelle) ---
-    setInterval(() => {
-        fetch('/api/info').then(r => r.json()).then(data => {
-            document.getElementById('streamTitle').innerText = data.title;
-            document.getElementById('streamDesc').innerText = data.description;
-            
-            // Canlılık Durumu
-            if (data.is_live) {
-                document.getElementById('posterLayer').style.display = 'none';
-                document.getElementById('badge').innerText = "CANLI";
-                document.getElementById('badge').classList.add('live');
-            } else {
-                document.getElementById('posterLayer').style.display = 'flex';
-                document.getElementById('badge').innerText = "OFFLINE";
-                document.getElementById('badge').classList.remove('live');
-            }
+    function updateStreamInfo() {
+        fetch('/api/info')
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
+            .then(data => {
+                reconnectAttempts = 0; // Reset on success
+                
+                document.getElementById('streamTitle').innerText = data.title;
+                document.getElementById('streamDesc').innerText = data.description;
+                
+                // Canlılık Durumu
+                if (data.is_live) {
+                    document.getElementById('posterLayer').style.display = 'none';
+                    document.getElementById('badge').innerText = "CANLI";
+                    document.getElementById('badge').classList.add('live');
+                    
+                    // Show uptime
+                    if (data.uptime) {
+                        document.getElementById('streamStats').innerText = 
+                            `⏱️ Uptime: ${formatUptime(data.uptime)} | 👥 Viewers: ${data.viewer_count || 0}`;
+                    }
+                } else {
+                    document.getElementById('posterLayer').style.display = 'flex';
+                    document.getElementById('badge').innerText = "OFFLINE";
+                    document.getElementById('badge').classList.remove('live');
+                    document.getElementById('streamStats').innerText = '';
+                }
 
-            // Kayan Yazı Kontrolü
-            const ticker = document.getElementById('tickerBox');
-            if (data.announcement && data.announcement.trim() !== "") {
-                ticker.style.display = 'block';
-                document.getElementById('tickerText').innerText = data.announcement;
-            } else {
-                ticker.style.display = 'none';
-            }
-        }).catch(()=>{});
-    }, 2000);
+                // Kayan Yazı Kontrolü
+                const ticker = document.getElementById('tickerBox');
+                if (data.announcement && data.announcement.trim() !== "") {
+                    ticker.style.display = 'block';
+                    document.getElementById('tickerText').innerText = data.announcement;
+                } else {
+                    ticker.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                console.error('API Error:', err);
+                reconnectAttempts++;
+                if (reconnectAttempts >= maxReconnectAttempts) {
+                    document.getElementById('streamDesc').innerText = 
+                        '⚠️ Connection lost. Please refresh the page.';
+                }
+            });
+    }
+    
+    // Poll every 2 seconds
+    updateStreamInfo();
+    setInterval(updateStreamInfo, 2000);
+
 
     // --- PLAYER (DVR Destekli) ---
     if (Hls.isSupported()) {
         const hls = new Hls({
             lowLatencyMode: true,
-            backBufferLength: 30 // 30 seconds rewind buffer (Replay the goal)
+            backBufferLength: 30, // 30 seconds rewind buffer (Replay the goal)
+            maxBufferLength: 10,
+            maxMaxBufferLength: 20
         });
         
+        hls.loadSource(videoSrc);
+        hls.attachMedia(video);
+        
         hls.on(Hls.Events.ERROR, (e, data) => {
-            if(data.fatal) hls.destroy();
+            console.error('HLS Error:', data.type, data.details);
+            if(data.fatal) {
+                switch(data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.log('Network error, attempting recovery...');
+                        setTimeout(() => hls.startLoad(), 3000);
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.log('Media error, attempting recovery...');
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        console.log('Fatal error, destroying player...');
+                        hls.destroy();
+                        break;
+                }
+            }
         });
         
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            video.play().catch(()=>{});
+            video.play().catch(err => {
+                console.log('Autoplay prevented:', err);
+            });
         });
 
         // Auto Recovery (Yayın gelince başlat)
         setInterval(() => {
             if(video.paused && document.getElementById('posterLayer').style.display == 'none') {
-                 hls.loadSource(videoSrc);
-                 hls.attachMedia(video);
+                console.log('Attempting to restart stream...');
+                hls.loadSource(videoSrc);
+                hls.attachMedia(video);
             }
         }, 5000);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari native HLS support
+        video.src = videoSrc;
+        video.addEventListener('loadedmetadata', () => {
+            video.play().catch(err => console.log('Autoplay prevented:', err));
+        });
     }
 </script>
 </body>

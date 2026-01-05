@@ -31,11 +31,20 @@
 
     <script>
         // Sayfa açılınca mevcut verileri çek
-        fetch('/api/info').then(r=>r.json()).then(d=>{
-            document.getElementById('title').value = d.title;
-            document.getElementById('desc').value = d.description;
-            document.getElementById('announcement').value = d.announcement;
-        });
+        fetch('/api/info')
+            .then(r => {
+                if (!r.ok) throw new Error('Failed to load');
+                return r.json();
+            })
+            .then(d => {
+                document.getElementById('title').value = d.title;
+                document.getElementById('desc').value = d.description;
+                document.getElementById('announcement').value = d.announcement;
+            })
+            .catch(err => {
+                console.error('Error loading data:', err);
+                alert('⚠️ Failed to load current data. Using defaults.');
+            });
 
         function save() {
             const data = {
@@ -43,11 +52,31 @@
                 description: document.getElementById('desc').value,
                 announcement: document.getElementById('announcement').value
             };
+            
+            const button = document.querySelector('button');
+            button.disabled = true;
+            button.innerText = 'UPDATING...';
+            
             fetch('/api/update', {
-                method:'POST', 
+                method: 'POST', 
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
-            }).then(()=> alert("✅ Stream info updated successfully!") );
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('Update failed');
+                return r.json();
+            })
+            .then(() => {
+                alert('✅ Stream info updated successfully!');
+                button.disabled = false;
+                button.innerText = 'UPDATE INFO';
+            })
+            .catch(err => {
+                console.error('Update error:', err);
+                alert('❌ Failed to update. Please try again.');
+                button.disabled = false;
+                button.innerText = 'UPDATE INFO';
+            });
         }
     </script>
 </body>
