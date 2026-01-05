@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,6 +34,13 @@ type HealthStatus struct {
 	Uptime  int64  `json:"uptime"`
 }
 
+type ChatMessage struct {
+	User  string `json:"user"`
+	Text  string `json:"text"`
+	Color string `json:"color"`
+	Time  string `json:"time"`
+}
+
 // Global Değişkenler (Thread-Safe olması için Mutex kullanıyoruz)
 var (
 	info = StreamInfo{
@@ -44,7 +53,13 @@ var (
 	startTime   = time.Now()
 	streamStart time.Time
 	version     = "2.0.0"
+	chatHub     = NewChatHub(50)
+
+	viewerMu       sync.Mutex
+	viewerSessions = make(map[string]time.Time)
 )
+
+const viewerTTL = 35 * time.Second
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
@@ -66,6 +81,9 @@ func main() {
 	mux.HandleFunc("/api/update", handleUpdate)
 	mux.HandleFunc("/api/health", handleHealth)
 	mux.HandleFunc("/api/stats", handleStats)
+	mux.HandleFunc("/api/chat/stream", handleChatStream)
+	mux.HandleFunc("/api/chat/send", handleChatSend)
+	mux.HandleFunc("/api/viewer/ping", handleViewerPing)
 
 	server := &http.Server{
 		Addr:         ":" + port,
@@ -208,6 +226,176 @@ func handleStats(w http.ResponseWriter, r *http.Request) {
 	mutex.RUnlock()
 
 	json.NewEncoder(w).Encode(stats)
+}
+
+// --- CHAT ---
+type ChatHub struct {
+	limit int
+	mu    sync.Mutex
+	msgs  []ChatMessage
+	subs  map[chan ChatMessage]struct{}
+}
+
+func NewChatHub(limit int) *ChatHub {
+	return &ChatHub{
+		limit: limit,
+		subs:  make(map[chan ChatMessage]struct{}),
+	}
+}
+
+func (h *ChatHub) Publish(msg ChatMessage) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.msgs = append(h.msgs, msg)
+	if len(h.msgs) > h.limit {
+		h.msgs = h.msgs[len(h.msgs)-h.limit:]
+	}
+	for ch := range h.subs {
+		select {
+		case ch <- msg:
+		default:
+			// slow consumer, drop
+		}
+	}
+}
+
+func (h *ChatHub) Subscribe() (chan ChatMessage, []ChatMessage) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	ch := make(chan ChatMessage, 10)
+	h.subs[ch] = struct{}{}
+	// send history snapshot
+	history := append([]ChatMessage(nil), h.msgs...)
+	return ch, history
+}
+
+func (h *ChatHub) Unsubscribe(ch chan ChatMessage) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if _, ok := h.subs[ch]; ok {
+		delete(h.subs, ch)
+		close(ch)
+	}
+}
+
+func handleChatSend(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var req ChatMessage
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if len(req.Text) == 0 || len(req.Text) > 280 {
+		http.Error(w, "text must be 1-280 chars", http.StatusBadRequest)
+		return
+	}
+	if len(req.User) == 0 || len(req.User) > 32 {
+		http.Error(w, "user must be 1-32 chars", http.StatusBadRequest)
+		return
+	}
+	if req.Color == "" {
+		req.Color = "#fb7185"
+	}
+	req.Time = time.Now().Format("15:04")
+	chatHub.Publish(req)
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+func handleChatStream(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	sub, history := chatHub.Subscribe()
+	defer chatHub.Unsubscribe(sub)
+
+	// send history
+	for _, m := range history {
+		b, _ := json.Marshal(m)
+		fmt.Fprintf(w, "data: %s\n\n", b)
+	}
+	flusher.Flush()
+
+	notify := r.Context().Done()
+	for {
+		select {
+		case <-notify:
+			return
+		case m := <-sub:
+			b, _ := json.Marshal(m)
+			fmt.Fprintf(w, "data: %s\n\n", b)
+			flusher.Flush()
+		}
+	}
+}
+
+// --- VIEWERS ---
+func handleViewerPing(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var payload struct {
+		ViewerID string `json:"viewer_id"`
+		Offline  bool   `json:"offline"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&payload)
+
+	now := time.Now()
+	viewerMu.Lock()
+	pruneViewersLocked(now)
+
+	id := payload.ViewerID
+	if payload.Offline {
+		if id != "" {
+			delete(viewerSessions, id)
+		}
+	} else {
+		if id == "" {
+			id = newViewerID()
+		}
+		viewerSessions[id] = now
+	}
+	count := len(viewerSessions)
+	viewerMu.Unlock()
+
+	mutex.Lock()
+	info.ViewerCount = count
+	mutex.Unlock()
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"viewer_id":    id,
+		"viewer_count": count,
+	})
+}
+
+func pruneViewersLocked(now time.Time) {
+	for id, ts := range viewerSessions {
+		if now.Sub(ts) > viewerTTL {
+			delete(viewerSessions, id)
+		}
+	}
+}
+
+func newViewerID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("fallback-%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
 }
 
 // --- MONITOR ENGINE ---
