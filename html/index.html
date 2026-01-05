@@ -4,69 +4,215 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yunus Can Live</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { --primary: #e50914; --dark: #0f0f0f; }
-        body { margin: 0; background: var(--dark); color: white; font-family: sans-serif; overflow: hidden; }
-        .layout { display: flex; height: 100vh; width: 100%; }
-        .video-box { flex: 3; position: relative; background: black; }
-        video { width: 100%; height: 100%; }
+        :root {
+            --primary: #f43f5e;
+            --primary-2: #fb7185;
+            --bg: #0b0d12;
+            --panel: rgba(255,255,255,0.06);
+            --glass: rgba(255,255,255,0.08);
+            --text: #e8ecf1;
+            --muted: #9aa2b1;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; background: radial-gradient(circle at 20% 20%, rgba(244,63,94,0.16), transparent 35%),
+            radial-gradient(circle at 80% 10%, rgba(37,99,235,0.14), transparent 30%),
+            radial-gradient(circle at 50% 80%, rgba(16,185,129,0.12), transparent 28%),
+            var(--bg);
+            color: var(--text); font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; min-height: 100vh; overflow: hidden;
+        }
+        .page { padding: 16px 24px 24px; height: 100vh; }
+        .shell { display: grid; grid-template-columns: 3fr 1fr; gap: 16px; height: calc(100vh - 40px); }
+        .stage { position: relative; border-radius: 18px; overflow: hidden; background: #050607; box-shadow: 0 20px 60px rgba(0,0,0,0.45); }
+        .video-wrap { position: relative; height: 100%; }
+        video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+        .glass { backdrop-filter: blur(14px); background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 35px rgba(0,0,0,0.35); }
 
-        /* Kayan Yazı (News Ticker) */
-        .ticker-wrap { position: absolute; bottom: 80px; left: 0; width: 100%; overflow: hidden; height: 40px; background: rgba(229, 9, 20, 0.9); display: none; z-index: 50; pointer-events: none; border-top: 2px solid white; border-bottom: 2px solid white; }
-        .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 20s linear infinite; font-weight: bold; line-height: 40px; font-size: 18px; text-transform: uppercase; color: white; }
+        /* Header overlay */
+        .overlay { position: absolute; inset: 0; pointer-events: none; }
+        .overlay-top { position: absolute; top: 16px; left: 16px; display: flex; gap: 14px; align-items: center; max-width: 75%; }
+        .title-block { background: none; padding: 0; backdrop-filter: none; box-shadow: none; }
+        .title { font-size: 1.75rem; font-weight: 700; margin: 0; letter-spacing: -0.02em; line-height: 1.2; color: #ffffff; text-shadow: 0 2px 12px rgba(0,0,0,0.9), 0 4px 20px rgba(0,0,0,0.6); }
+        .desc { color: rgba(229,231,235,0.95); margin: 4px 0 0; font-weight: 500; font-size: 0.92rem; line-height: 1.4; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+        .badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.01em; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 24px rgba(0,0,0,0.25); }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; box-shadow: 0 0 0 0 rgba(244,63,94,0.5); }
+        .badge.live { background: linear-gradient(90deg, rgba(244,63,94,0.22), rgba(244,63,94,0.08)); color: #fff; }
+        .badge.live .dot { background: var(--primary); animation: pulse 1.6s ease-in-out infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(244,63,94,0.6);} 70% { box-shadow: 0 0 0 10px rgba(244,63,94,0);} 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0);} }
+        .stats { color: #e5e7eb; font-size: 0.92rem; display: flex; gap: 10px; align-items: center; }
+        .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 12px; background: rgba(255,255,255,0.05); font-weight: 700; color: #e5e7eb; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 10px 24px rgba(0,0,0,0.3); }
+        .pill i { color: var(--primary); }
+        .overlay-bottom { position: absolute; right: 16px; bottom: 16px; display: flex; gap: 10px; align-items: flex-end; }
+        .overlay-bottom .pill { background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px); }
+
+        /* Controls */
+        .control-bar { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px; border-radius: 16px; pointer-events: auto; background: rgba(0,0,0,0.28); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+        .control-btn { border: 1px solid rgba(255,255,255,0.08); color: #e5e7eb; background: rgba(255,255,255,0.05); padding: 10px 16px; border-radius: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-size: 0.95rem; }
+        .control-btn:hover { background: rgba(255,255,255,0.14); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.15); }
+        .control-btn:active { transform: translateY(0); }
+        .control-btn i { font-size: 1.05rem; }
+
+        /* Ticker */
+        .ticker-wrap { position: absolute; bottom: 70px; left: 0; width: 100%; overflow: hidden; height: 44px; background: linear-gradient(90deg, rgba(244,63,94,0.92), rgba(251,113,133,0.9)); display: none; z-index: 50; pointer-events: none; border-top: 2px solid rgba(255,255,255,0.35); border-bottom: 2px solid rgba(255,255,255,0.35); }
+        .ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 18s linear infinite; font-weight: 700; line-height: 44px; font-size: 18px; text-transform: uppercase; color: white; letter-spacing: 0.04em; }
         @keyframes ticker { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
 
-        /* Üst Bilgi */
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; background: linear-gradient(black, transparent); z-index: 10; pointer-events: none; }
-        .title { font-size: 1.5rem; font-weight: bold; margin: 0; text-shadow: 0 2px 4px black; }
-        .desc { color: #ccc; margin: 5px 0 0; }
-        .badge { background: #555; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; vertical-align: middle; margin-right: 10px; }
-        .badge.live { background: var(--primary); animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        .stats { color: #aaa; font-size: 0.9rem; margin-top: 5px; }
-
         /* Poster */
-        .poster { position: absolute; inset: 0; background: url('poster.jpg') center/cover; z-index: 5; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        
-        /* Chat */
-        .chat-box { flex: 1; border-left: 1px solid #333; background: #111; }
-        iframe { width: 100%; height: 100%; border: none; }
+        .poster { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(10,12,17,0.9), rgba(17,21,30,0.92)), url('poster.jpg') center/cover; z-index: 5; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; text-align: center; padding: 24px; }
+        .poster h1 { margin: 0; letter-spacing: 0.1em; font-size: 1.4rem; }
+        .poster .hint { color: var(--muted); font-weight: 500; }
+
+        /* Sidebar */
+        .sidebar { background: linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04)); border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; backdrop-filter: blur(16px); box-shadow: 0 20px 60px rgba(0,0,0,0.4); min-height: 0; }
+        .sidebar-header { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.15); }
+        .sidebar-header-top { display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-header h3 { margin: 0; font-size: 1.1rem; letter-spacing: 0.01em; font-weight: 700; color: #f5f5f5; }
+        .pill-small { font-size: 0.75rem; padding: 5px 10px; border-radius: 12px; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.2); color: #86efac; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+        .nickname { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+        .nickname.saved { grid-template-columns: 1fr; }
+        .nickname input { padding: 11px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); color: var(--text); font-size: 0.95rem; transition: all 0.2s ease; }
+        .nickname input:focus { border-color: rgba(244,63,94,0.4); background: rgba(0,0,0,0.5); outline: none; box-shadow: 0 0 0 3px rgba(244,63,94,0.1); }
+        .nickname button { border: none; border-radius: 12px; padding: 11px 14px; background: linear-gradient(135deg, rgba(244,63,94,0.9), rgba(251,113,133,0.85)); color: #fff; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; min-width: 44px; }
+        .nickname button:hover { background: linear-gradient(135deg, var(--primary), var(--primary-2)); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(244,63,94,0.3); }
+        .nickname button:active { transform: translateY(0); }
+        .nickname button.hidden { display: none; }
+        .nickname-display { padding: 11px 14px; border-radius: 12px; background: rgba(244,63,94,0.12); border: 1px solid rgba(244,63,94,0.25); color: #fca5a5; font-size: 0.95rem; font-weight: 600; display: none; }
+        .nickname-display.visible { display: block; }
+        .chat-box { display: flex; flex-direction: column; background: rgba(0,0,0,0.25); min-height: 0; }
+        .chat-messages { padding: 16px 18px; flex: 1; overflow-y: auto; max-height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 12px; overscroll-behavior: contain; scroll-behavior: smooth; }
+        .chat-messages::-webkit-scrollbar { width: 8px; }
+        .chat-messages::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-radius: 12px; margin: 8px 0; }
+        .chat-messages::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(244,63,94,0.7), rgba(251,113,133,0.7)); border-radius: 12px; border: 2px solid rgba(0,0,0,0.2); }
+        .chat-messages::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, rgba(244,63,94,0.85), rgba(251,113,133,0.85)); }
+        .chat-messages { scrollbar-width: thin; scrollbar-color: rgba(244,63,94,0.65) rgba(255,255,255,0.03); }
+        .chat-empty { color: rgba(156,163,175,0.85); text-align: center; padding: 32px 16px; font-weight: 500; font-size: 0.92rem; }
+        .msg { background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04)); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 12px 14px; line-height: 1.5; transition: all 0.2s ease; }
+        .msg:hover { background: linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.06)); border-color: rgba(255,255,255,0.12); transform: translateX(2px); }
+        .msg.fading { opacity: 0; transform: translateX(-20px); transition: all 0.6s ease; }
+        .msg-meta { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #cbd5e1; margin-bottom: 5px; font-weight: 700; }
+        .msg-text { color: #f3f4f6; white-space: pre-wrap; word-break: break-word; font-size: 0.95rem; }
+        .chat-input { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 14px 16px; border-top: 1px solid rgba(255,255,255,0.08); background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.2)); }
+        .chat-input input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); color: var(--text); font-size: 0.96rem; transition: all 0.2s ease; }
+        .chat-input input:focus { outline: none; border-color: rgba(244,63,94,0.4); background: rgba(0,0,0,0.5); box-shadow: 0 0 0 3px rgba(244,63,94,0.12); }
+        .chat-input input::placeholder { color: rgba(156,163,175,0.6); }
+        .chat-send { border: none; border-radius: 12px; padding: 12px 16px; background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; font-weight: 700; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-size: 0.95rem; display: flex; align-items: center; gap: 6px; min-width: 44px; }
+        .chat-send:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(244,63,94,0.4); }
+        .chat-send:active { transform: translateY(0); }
+        .chat-send i { font-size: 1rem; }
+
+        /* Toast */
+        .toast { position: fixed; top: 16px; right: 16px; padding: 12px 16px; border-radius: 12px; background: rgba(17,24,39,0.9); color: #e5e7eb; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.35); display: none; align-items: center; gap: 8px; z-index: 200; }
+        .toast.error { border-color: rgba(244,63,94,0.4); color: #fecdd3; }
+        .toast.success { border-color: rgba(34,197,94,0.4); color: #d1fae5; }
+
+        @media (max-width: 1100px) {
+            .shell { grid-template-columns: 1fr; height: auto; }
+            .page { padding: 12px; }
+            .stage { min-height: 60vh; }
+        }
     </style>
 </head>
 <body>
 
-<div class="layout">
-    <div class="video-box">
+<div class="page">
+  <div class="shell">
+    <div class="stage">
+      <div class="video-wrap">
         <div class="overlay">
-            <span id="badge" class="badge">OFFLINE</span>
-            <span id="streamTitle" class="title">Connecting</span>
-            <p id="streamDesc" class="desc">...</p>
-            <div id="streamStats" class="stats"></div>
+            <div class="overlay-top">
+                <div class="badge" id="statusBadge"><span class="dot"></span><span id="statusText">OFFLINE</span></div>
+                <div class="title-block">
+                    <h1 id="streamTitle" class="title">Connecting</h1>
+                    <p id="streamDesc" class="desc">...</p>
+                </div>
+            </div>
+            <div class="overlay-bottom">
+                <div class="stats" id="streamStats"></div>
+            </div>
         </div>
 
         <div class="ticker-wrap" id="tickerBox">
             <div class="ticker" id="tickerText"></div>
         </div>
 
-        <div class="poster" id="posterLayer"><h1>WAITING FOR STREAM</h1></div>
+        <div class="poster glass" id="posterLayer">
+            <h1>WAITING FOR STREAM</h1>
+            <div class="hint">We reconnect as soon as the encoder goes live.</div>
+        </div>
 
         <video id="video" controls autoplay playsinline></video>
+
+        <div class="control-bar glass">
+            <button class="control-btn" onclick="reloadPlayer()"><i class="fa fa-arrow-rotate-right"></i> Reload</button>
+            <button class="control-btn" id="muteBtn" onclick="toggleMute()"><i class="fa fa-volume-up" id="muteIcon"></i> <span id="muteText">Mute</span></button>
+        </div>
+      </div>
     </div>
 
-    <div class="chat-box">
-        <div id="tlkio" data-channel="yunuscan-local-v6" style="width:100%;height:100%;"></div>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-header-top">
+                <h3>Live Chat</h3>
+                <span class="pill-small" id="chatStatus">connecting</span>
+            </div>
+            <div class="nickname">
+                <div class="nickname-display" id="nicknameDisplay"></div>
+                <input id="nicknameInput" type="text" placeholder="Takma ad yaz" maxlength="32" />
+                <button id="nicknameSave"><i class="fa fa-check"></i></button>
+            </div>
+        </div>
+        <div class="chat-box">
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-empty" id="chatEmpty">Sohbet boş. İlk mesajı sen yaz!</div>
+            </div>
+            <div class="chat-input">
+                <input id="chatInput" type="text" placeholder="Mesaj yaz..." maxlength="280" />
+                <button class="chat-send" id="chatSend"><i class="fa fa-paper-plane"></i></button>
+            </div>
+        </div>
     </div>
+  </div>
 </div>
 
-<script async src="http://tlk.io/embed.js"></script>
+<div class="toast" id="toast"><i class="fa fa-circle-exclamation"></i><span id="toastMsg"></span></div>
+
 <script>
     const videoSrc = '/app/stream/llhls.m3u8';
+    const hlsScriptUrl = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
     const video = document.getElementById('video');
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 10;
+    let recoveryInterval;
+    
+    // Reload HLS library if CDN blocked or late-loaded
+    function ensureHlsLoaded() {
+        if (typeof Hls !== 'undefined') return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const existing = document.querySelector('script[data-hls]');
+            if (existing) {
+                existing.addEventListener('load', () => resolve());
+                existing.addEventListener('error', () => reject(new Error('HLS reload failed')));
+                return;
+            }
+            const s = document.createElement('script');
+            s.src = hlsScriptUrl;
+            s.async = true;
+            s.dataset.hls = '1';
+            s.onload = () => resolve();
+            s.onerror = () => reject(new Error('HLS reload failed'));
+            document.head.appendChild(s);
+            showToast('Player kütüphanesi yeniden yükleniyor...', 'success');
+        });
+    }
     
     // Helper to format uptime
     function formatUptime(seconds) {
@@ -79,6 +225,262 @@
         return `${hours}h ${m}m`;
     }
     
+    function setBadge(live) {
+        const badge = document.getElementById('statusBadge');
+        const text = document.getElementById('statusText');
+        if (live) {
+            badge.classList.add('live');
+            text.innerText = 'LIVE';
+        } else {
+            badge.classList.remove('live');
+            text.innerText = 'OFFLINE';
+        }
+    }
+
+    function showToast(msg, type = 'error') {
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toastMsg');
+        toastMsg.innerText = msg;
+        toast.className = `toast ${type}`;
+        toast.style.display = 'flex';
+        clearTimeout(toast._t);
+        toast._t = setTimeout(() => toast.style.display = 'none', 4000);
+    }
+
+    function toggleMute() {
+        video.muted = !video.muted;
+        const muteIcon = document.getElementById('muteIcon');
+        const muteText = document.getElementById('muteText');
+        if (video.muted) {
+            muteIcon.className = 'fa fa-volume-xmark';
+            muteText.innerText = 'Unmute';
+        } else {
+            muteIcon.className = 'fa fa-volume-up';
+            muteText.innerText = 'Mute';
+        }
+    }
+
+    function reloadPlayer() {
+        if (window.hlsInstance) {
+            window.hlsInstance.destroy();
+        }
+        if (recoveryInterval) clearInterval(recoveryInterval);
+        video.src = '';
+        initPlayer();
+        showToast('Player reloaded', 'success');
+    }
+
+    // --- SERVER CHAT (SSE + POST) ---
+    const chatMessagesEl = document.getElementById('chatMessages');
+    const chatEmptyEl = document.getElementById('chatEmpty');
+    const chatInput = document.getElementById('chatInput');
+    const chatSend = document.getElementById('chatSend');
+    const chatStatus = document.getElementById('chatStatus');
+    const nicknameInput = document.getElementById('nicknameInput');
+    const nicknameSave = document.getElementById('nicknameSave');
+    const nicknameDisplay = document.getElementById('nicknameDisplay');
+    const nicknameContainer = document.querySelector('.nickname');
+    let viewerId = loadViewerId();
+
+    const color = '#'+Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0');
+    let chatMessages = [];
+    let nickname = loadNickname();
+    
+    // Initialize nickname UI state
+    if (nickname) {
+        nicknameDisplay.textContent = nickname;
+        nicknameDisplay.classList.add('visible');
+        nicknameInput.style.display = 'none';
+        nicknameSave.classList.add('hidden');
+        nicknameContainer.classList.add('saved');
+    } else {
+        nicknameInput.value = '';
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    }
+
+    function loadNickname() {
+        const stored = localStorage.getItem('stream_chat_user');
+        return stored && stored.trim() ? stored.trim() : '';
+    }
+
+    function loadViewerId() {
+        const stored = localStorage.getItem('stream_viewer_id');
+        if (stored && stored.trim()) return stored.trim();
+        const generated = 'v_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem('stream_viewer_id', generated);
+        return generated;
+    }
+
+    function saveNickname(name) {
+        const trimmed = (name || '').trim();
+        if (!trimmed) return false;
+        localStorage.setItem('stream_chat_user', trimmed);
+        nickname = trimmed;
+        
+        // Update UI to show saved state
+        nicknameDisplay.textContent = trimmed;
+        nicknameDisplay.classList.add('visible');
+        nicknameInput.style.display = 'none';
+        nicknameSave.classList.add('hidden');
+        nicknameContainer.classList.add('saved');
+        chatStatus.textContent = 'connected';
+        return true;
+    }
+
+    function isNearBottom(el, threshold = 80) {
+        return el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    }
+
+    function appendMessage(m) {
+        if (chatEmptyEl.parentNode) chatEmptyEl.remove();
+        const wrap = document.createElement('div');
+        wrap.className = 'msg';
+        wrap.dataset.timestamp = Date.now();
+        wrap.innerHTML = `<div class="msg-meta"><span style="color:${m.color || '#fb7185'}">${escapeHtml(m.user)}</span><span>${m.time}</span></div><div class="msg-text">${escapeHtml(m.text)}</div>`;
+        chatMessagesEl.appendChild(wrap);
+    }
+
+    function scrollToBottom() {
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    }
+
+    // Auto-remove old messages after 5 minutes
+    function cleanupOldMessages() {
+        const now = Date.now();
+        const maxAge = 5 * 60 * 1000; // 5 minutes
+        const messages = chatMessagesEl.querySelectorAll('.msg');
+        
+        messages.forEach((msg) => {
+            const timestamp = parseInt(msg.dataset.timestamp);
+            if (now - timestamp > maxAge) {
+                msg.classList.add('fading');
+                setTimeout(() => {
+                    if (msg.parentNode) msg.remove();
+                }, 600);
+            }
+        });
+    }
+
+    // Run cleanup every 30 seconds
+    setInterval(cleanupOldMessages, 30000);
+
+    function sendChat(text) {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        if (!nickname || !nickname.trim()) {
+            showToast('Önce bir takma ad girin', 'error');
+            nicknameInput.focus();
+            return;
+        }
+        fetch('/api/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user: nickname.trim(), text: trimmed, color })
+        }).catch(err => console.error('chat send error', err));
+    }
+
+    function attachChatStream() {
+        try {
+            const es = new EventSource('/api/chat/stream');
+            es.onmessage = (ev) => {
+                try {
+                    const msg = JSON.parse(ev.data);
+                    const stickToBottom = isNearBottom(chatMessagesEl);
+                    chatMessages.push(msg);
+                    if (chatMessages.length > 200) {
+                        chatMessages = chatMessages.slice(-200);
+                        if (chatMessagesEl.firstChild && chatMessagesEl.firstChild !== chatEmptyEl) {
+                            chatMessagesEl.removeChild(chatMessagesEl.firstChild);
+                        }
+                    }
+                    appendMessage(msg);
+                    if (stickToBottom) scrollToBottom();
+                } catch(e) { console.error('chat parse', e); }
+            };
+            es.onerror = () => {
+                chatStatus.textContent = 'retrying';
+                setTimeout(() => es.close(), 0);
+                setTimeout(attachChatStream, 1500);
+            };
+            es.onopen = () => { chatStatus.textContent = 'connected'; };
+        } catch (e) {
+            console.error('chat stream error', e);
+            chatStatus.textContent = 'error';
+        }
+    }
+
+    chatSend.addEventListener('click', () => {
+        sendChat(chatInput.value);
+        chatInput.value = '';
+        chatInput.focus();
+    });
+
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendChat(chatInput.value);
+            chatInput.value = '';
+        }
+    });
+
+    nicknameSave.addEventListener('click', () => {
+        if (!saveNickname(nicknameInput.value)) {
+            showToast('Takma ad boş olamaz', 'error');
+            nicknameInput.focus();
+        } else {
+            showToast('Takma ad kaydedildi', 'success');
+        }
+    });
+
+    nicknameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            nicknameSave.click();
+        }
+    });
+
+    attachChatStream();
+
+    // Viewer heartbeat to update live count
+    function sendViewerPing({ offline = false } = {}) {
+        const payload = { viewer_id: viewerId, offline };
+        const body = JSON.stringify(payload);
+
+        // Try beacon for tab close
+        if (offline && navigator.sendBeacon) {
+            const blob = new Blob([body], { type: 'application/json' });
+            navigator.sendBeacon('/api/viewer/ping', blob);
+            return;
+        }
+
+        fetch('/api/viewer/ping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+            keepalive: true
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.viewer_id) {
+                viewerId = data.viewer_id;
+                localStorage.setItem('stream_viewer_id', viewerId);
+            }
+        })
+        .catch(err => console.error('viewer ping error', err));
+    }
+
+    function startViewerHeartbeat() {
+        sendViewerPing();
+        setInterval(() => sendViewerPing(), 15000);
+    }
+
+    startViewerHeartbeat();
+    window.addEventListener('pagehide', () => sendViewerPing({ offline: true }));
+    window.addEventListener('beforeunload', () => sendViewerPing({ offline: true }));
+
     // --- API POLLING (Her 2 saniyede bir verileri güncelle) ---
     function updateStreamInfo() {
         fetch('/api/info')
@@ -95,19 +497,18 @@
                 // Canlılık Durumu
                 if (data.is_live) {
                     document.getElementById('posterLayer').style.display = 'none';
-                    document.getElementById('badge').innerText = "CANLI";
-                    document.getElementById('badge').classList.add('live');
+                    setBadge(true);
                     
                     // Show uptime
-                    if (data.uptime) {
-                        document.getElementById('streamStats').innerText = 
-                            `⏱️ Uptime: ${formatUptime(data.uptime)} | 👥 Viewers: ${data.viewer_count || 0}`;
-                    }
+                    const stats = [];
+                    if (data.uptime) stats.push(`⏱️ ${formatUptime(data.uptime)}`);
+                    stats.push(`👥 ${data.viewer_count || 0} izleyici`);
+                    document.getElementById('streamStats').innerHTML = stats.map(s => `<span class="pill">${s}</span>`).join('');
                 } else {
                     document.getElementById('posterLayer').style.display = 'flex';
-                    document.getElementById('badge').innerText = "OFFLINE";
-                    document.getElementById('badge').classList.remove('live');
-                    document.getElementById('streamStats').innerText = '';
+                    setBadge(false);
+                    // Show viewer count even when offline
+                    document.getElementById('streamStats').innerHTML = `<span class="pill">👥 ${data.viewer_count || 0} izleyici</span>`;
                 }
 
                 // Kayan Yazı Kontrolü
@@ -122,6 +523,7 @@
             .catch(err => {
                 console.error('API Error:', err);
                 reconnectAttempts++;
+                showToast('Bağlantı sorunu: ' + err.message, 'error');
                 if (reconnectAttempts >= maxReconnectAttempts) {
                     document.getElementById('streamDesc').innerText = 
                         '⚠️ Connection lost. Please refresh the page.';
@@ -134,59 +536,69 @@
     setInterval(updateStreamInfo, 2000);
 
 
-    // --- PLAYER (DVR Destekli) ---
-    if (Hls.isSupported()) {
-        const hls = new Hls({
-            lowLatencyMode: true,
-            backBufferLength: 30, // 30 seconds rewind buffer (Replay the goal)
-            maxBufferLength: 10,
-            maxMaxBufferLength: 20
-        });
-        
-        hls.loadSource(videoSrc);
-        hls.attachMedia(video);
-        
-        hls.on(Hls.Events.ERROR, (e, data) => {
-            console.error('HLS Error:', data.type, data.details);
-            if(data.fatal) {
-                switch(data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.log('Network error, attempting recovery...');
-                        setTimeout(() => hls.startLoad(), 3000);
-                        break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.log('Media error, attempting recovery...');
-                        hls.recoverMediaError();
-                        break;
-                    default:
-                        console.log('Fatal error, destroying player...');
-                        hls.destroy();
-                        break;
-                }
-            }
-        });
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            video.play().catch(err => {
-                console.log('Autoplay prevented:', err);
+    function initPlayer() {
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                lowLatencyMode: true,
+                backBufferLength: 30, // 30 seconds rewind buffer
+                maxBufferLength: 10,
+                maxMaxBufferLength: 20
             });
-        });
+            window.hlsInstance = hls;
+            hls.loadSource(videoSrc);
+            hls.attachMedia(video);
+            
+            hls.on(Hls.Events.ERROR, (e, data) => {
+                console.error('HLS Error:', data.type, data.details);
+                if(data.fatal) {
+                    switch(data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            console.log('Network error, attempting recovery...');
+                            setTimeout(() => hls.startLoad(), 3000);
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            console.log('Media error, attempting recovery...');
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            console.log('Fatal error, destroying player...');
+                            hls.destroy();
+                            showToast('Player stopped. Please reload.', 'error');
+                            break;
+                    }
+                }
+            });
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(err => {
+                    console.log('Autoplay prevented:', err);
+                });
+            });
 
-        // Auto Recovery (Yayın gelince başlat)
-        setInterval(() => {
-            if(video.paused && document.getElementById('posterLayer').style.display == 'none') {
-                console.log('Attempting to restart stream...');
-                hls.loadSource(videoSrc);
-                hls.attachMedia(video);
-            }
-        }, 5000);
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari native HLS support
-        video.src = videoSrc;
-        video.addEventListener('loadedmetadata', () => {
-            video.play().catch(err => console.log('Autoplay prevented:', err));
-        });
+            // Auto Recovery (Yayın gelince başlat)
+            if (recoveryInterval) clearInterval(recoveryInterval);
+            recoveryInterval = setInterval(() => {
+                if(video.paused && document.getElementById('posterLayer').style.display == 'none') {
+                    console.log('Attempting to restart stream...');
+                    hls.loadSource(videoSrc);
+                    hls.attachMedia(video);
+                }
+            }, 5000);
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Safari native HLS support
+            video.src = videoSrc;
+            video.addEventListener('loadedmetadata', () => {
+                video.play().catch(err => console.log('Autoplay prevented:', err));
+            });
+        }
     }
+
+    ensureHlsLoaded()
+        .then(() => initPlayer())
+        .catch((err) => {
+            console.error('HLS load error', err);
+            showToast('Player kütüphanesi yüklenemedi. Lütfen sayfayı yenileyin.', 'error');
+        });
 </script>
 </body>
 </html>
