@@ -3,30 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <title>Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background: #1a1a1a; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .panel { background: #2d2d2d; padding: 40px; border-radius: 12px; width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid #444; }
-        h2 { margin-top: 0; color: #ff4444; text-align: center; }
-        label { display: block; margin: 20px 0 5px; color: #aaa; font-size: 0.9rem; }
-        input, textarea { width: 100%; padding: 12px; background: #111; border: 1px solid #444; color: white; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; margin-top: 25px; padding: 15px; background: linear-gradient(45deg, #cc0000, #ff4444); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 6px; font-size: 1rem; }
-        button:hover { filter: brightness(1.2); }
+        :root {
+            --primary: #f43f5e;
+            --primary-2: #fb7185;
+            --bg: #090b10;
+            --panel: rgba(255,255,255,0.06);
+            --text: #e8ecf1;
+            --muted: #9aa2b1;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 20% 20%, rgba(244,63,94,0.16), transparent 35%), radial-gradient(circle at 80% 10%, rgba(37,99,235,0.14), transparent 30%), radial-gradient(circle at 50% 80%, rgba(16,185,129,0.12), transparent 28%), var(--bg); color: var(--text); font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; display: flex; align-items: center; justify-content: center; padding: 18px; }
+        .panel { width: min(720px, 100%); background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.45); backdrop-filter: blur(12px); }
+        .panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+        .panel h2 { margin: 0; font-size: 1.3rem; letter-spacing: 0.02em; }
+        .status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: rgba(34,197,94,0.12); color: #bbf7d0; border: 1px solid rgba(34,197,94,0.25); font-weight: 600; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 8px; }
+        label { display: block; margin-bottom: 8px; color: var(--muted); font-size: 0.9rem; font-weight: 600; letter-spacing: 0.01em; }
+        input, textarea { width: 100%; padding: 14px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); color: var(--text); border-radius: 10px; font-size: 1rem; }
+        textarea { resize: vertical; min-height: 110px; }
+        input:focus, textarea:focus { outline: 1px solid rgba(244,63,94,0.35); box-shadow: 0 0 0 3px rgba(244,63,94,0.12); }
+        .actions { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+        button { border: none; cursor: pointer; font-weight: 700; border-radius: 12px; padding: 14px 16px; color: #fff; transition: all 0.15s ease; }
+        .primary { background: linear-gradient(120deg, var(--primary), var(--primary-2)); flex: 1; min-width: 200px; }
+        .ghost { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid rgba(255,255,255,0.1); }
+        button:hover { transform: translateY(-1px); filter: brightness(1.04); }
+        .notice { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid rgba(255,255,255,0.06); font-size: 0.95rem; }
+        .row { display: flex; flex-direction: column; gap: 10px; }
     </style>
 </head>
 <body>
     <div class="panel">
-        <h2>🎛️ ADMIN PANEL</h2>
-        
-        <label>Stream Title</label>
-        <input type="text" id="title">
-        
-        <label>Stream Description</label>
-        <textarea id="desc" rows="3"></textarea>
-        
-        <label>🚨 BREAKING NEWS (Ticker)</label>
-        <input type="text" id="announcement" placeholder="Leave empty to disable...">
-        
-        <button onclick="save()">UPDATE INFO</button>
+        <header>
+            <h2>🎛️ Live Control Room</h2>
+            <div class="status" id="statusBadge"><i class="fa fa-circle-check"></i> Ready</div>
+        </header>
+
+        <div class="form-grid">
+            <div class="row">
+                <label>Stream Title</label>
+                <input type="text" id="title" placeholder="Awesome live session">
+            </div>
+            <div class="row">
+                <label>🚨 Breaking News (Ticker)</label>
+                <input type="text" id="announcement" placeholder="Leave empty to disable...">
+            </div>
+        </div>
+
+        <div class="row" style="margin-top: 12px;">
+            <label>Stream Description</label>
+            <textarea id="desc" rows="4" placeholder="Describe what viewers should expect..."></textarea>
+        </div>
+
+        <div class="actions">
+            <button class="primary" onclick="save()" id="saveBtn">Save Changes</button>
+            <button class="ghost" onclick="clearTicker()">Clear Ticker</button>
+        </div>
+
+        <div class="notice" id="statusText">Loaded live metadata. Edit and hit Save.</div>
     </div>
 
     <script>
@@ -40,10 +78,11 @@
                 document.getElementById('title').value = d.title;
                 document.getElementById('desc').value = d.description;
                 document.getElementById('announcement').value = d.announcement;
+                setStatus('Ready', 'success');
             })
             .catch(err => {
                 console.error('Error loading data:', err);
-                alert('⚠️ Failed to load current data. Using defaults.');
+                setStatus('Failed to load current data. Using defaults.', 'error');
             });
 
         function save() {
@@ -53,9 +92,9 @@
                 announcement: document.getElementById('announcement').value
             };
             
-            const button = document.querySelector('button');
+            const button = document.getElementById('saveBtn');
             button.disabled = true;
-            button.innerText = 'UPDATING...';
+            button.innerText = 'Saving...';
             
             fetch('/api/update', {
                 method: 'POST', 
@@ -67,16 +106,38 @@
                 return r.json();
             })
             .then(() => {
-                alert('✅ Stream info updated successfully!');
+                setStatus('Stream info updated successfully!', 'success');
                 button.disabled = false;
-                button.innerText = 'UPDATE INFO';
+                button.innerText = 'Save Changes';
             })
             .catch(err => {
                 console.error('Update error:', err);
-                alert('❌ Failed to update. Please try again.');
+                setStatus('Failed to update. Please try again.', 'error');
                 button.disabled = false;
-                button.innerText = 'UPDATE INFO';
+                button.innerText = 'Save Changes';
             });
+        }
+
+        function clearTicker() {
+            document.getElementById('announcement').value = '';
+            save();
+        }
+
+        function setStatus(msg, type) {
+            const badge = document.getElementById('statusBadge');
+            const text = document.getElementById('statusText');
+            text.textContent = msg;
+            if (type === 'success') {
+                badge.style.background = 'rgba(34,197,94,0.12)';
+                badge.style.color = '#bbf7d0';
+                badge.style.borderColor = 'rgba(34,197,94,0.25)';
+                badge.innerHTML = '<i class="fa fa-circle-check"></i> Ready';
+            } else {
+                badge.style.background = 'rgba(244,63,94,0.12)';
+                badge.style.color = '#fecdd3';
+                badge.style.borderColor = 'rgba(244,63,94,0.25)';
+                badge.innerHTML = '<i class="fa fa-circle-exclamation"></i> Check';
+            }
         }
     </script>
 </body>
