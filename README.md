@@ -17,6 +17,18 @@ Docker-based local live streaming infrastructure. Start streaming with OBS, watc
                               └───────────┘
 ```
 
+## ✨ What's New in v2.1
+
+- 💬 **Live Chat System**: Real-time SSE-based chat with message persistence
+- 👥 **Viewer Tracking**: Active viewer count with session tracking and heartbeat
+- 🎤 **Custom Nicknames**: Users set a nickname once, persisted in localStorage
+- ⏰ **Auto-Cleanup**: Chat messages auto-fade after 5 minutes for clean UI
+- 🎨 **Modern UI**: Redesigned overlay with transparent top-left layout, bottom-right stats
+- 📜 **Scrollable Chat**: Smart scroll that preserves position while allowing manual scrolling
+- 🔊 **Fixed Mute Button**: Proper icon toggle (volume-up ↔ volume-xmark)
+- ✨ **Enhanced Controls**: Polished glass-effect control bar with smooth animations
+- 📱 **Responsive Design**: Better layout and typography across all screen sizes
+
 ## ✨ What's New in v2.0
 
 - 🚀 **Better Performance**: Nginx compression and caching
@@ -90,7 +102,7 @@ stream-box/
 ## 🔌 API Endpoints
 
 ### `GET /api/info`
-Returns stream status and information.
+Returns stream status, viewer count, and metadata.
 
 ```json
 {
@@ -99,7 +111,7 @@ Returns stream status and information.
   "announcement": "Ticker text",
   "is_live": true,
   "uptime": 3600,
-  "viewer_count": 42
+  "viewer_count": 5
 }
 ```
 
@@ -120,7 +132,7 @@ Health check endpoint for monitoring.
 ```json
 {
   "status": "healthy",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "uptime": 86400
 }
 ```
@@ -132,8 +144,53 @@ Detailed stream statistics.
 {
   "is_live": true,
   "uptime": 3600,
-  "viewer_count": 42,
+  "viewer_count": 5,
   "last_check": 1.5
+}
+```
+
+### `GET /api/chat/stream` (SSE)
+Server-sent events stream for real-time chat messages.
+
+**Usage**: Connect with `EventSource('/api/chat/stream')`
+
+**Message format**:
+```json
+{
+  "user": "username",
+  "text": "Hello world!",
+  "color": "#f43f5e",
+  "time": "14:32"
+}
+```
+
+### `POST /api/chat/send`
+Send a chat message.
+
+```json
+{
+  "user": "username",
+  "text": "Hello world!",
+  "color": "#f43f5e"
+}
+```
+
+### `POST /api/viewer/ping`
+Heartbeat for viewer tracking (called every 15 seconds, or offline payload on page close).
+
+**Request**:
+```json
+{
+  "viewer_id": "v_abc123...",
+  "offline": false
+}
+```
+
+**Response**:
+```json
+{
+  "viewer_id": "v_abc123...",
+  "viewer_count": 5
 }
 ```
 
@@ -145,6 +202,10 @@ Detailed stream statistics.
 - ✅ **News Ticker**: Scrolling announcement bar
 - ✅ **Basic Auth**: Password protected access
 - ✅ **Admin Panel**: Live stream info editing
+- ✅ **Live Chat**: Real-time SSE-based chat system with viewer participation
+- ✅ **Custom Nicknames**: Users set nickname once, persisted in localStorage
+- ✅ **Viewer Tracking**: Active viewer count with heartbeat-based session tracking
+- ✅ **Chat Auto-Cleanup**: Messages fade out after 5 minutes for clean UI
 - ✅ **Responsive**: Mobile-friendly design
 - ✅ **Statistics**: Real-time uptime and viewer tracking
 - ✅ **Health Monitoring**: Docker health checks for all services
