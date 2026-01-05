@@ -17,6 +17,19 @@ Docker-based local live streaming infrastructure. Start streaming with OBS, watc
                               └───────────┘
 ```
 
+## ✨ What's New in v2.0
+
+- 🚀 **Better Performance**: Nginx compression and caching
+- 🔒 **Enhanced Security**: Security headers, better CORS handling
+- 📊 **Statistics**: Stream uptime and viewer count tracking
+- 🏥 **Health Checks**: Docker health monitoring for all services
+- ⚙️ **Configuration**: Environment variables support via .env file
+- 🛡️ **Error Handling**: Improved error handling and logging
+- 🔄 **Graceful Shutdown**: Proper service shutdown handling
+- 📱 **Better UI**: Improved frontend with live statistics display
+- 🎯 **New Endpoints**: /api/health and /api/stats
+- 🔧 **Auto Recovery**: Better HLS error recovery mechanism
+
 ## 🚀 Quick Start
 
 ```bash
@@ -29,6 +42,23 @@ docker compose up -d
 
 # 3. Watch from browser:
 #    http://localhost:8090
+
+# 4. Admin panel:
+#    http://localhost:8090/admin.html
+```
+
+## ⚙️ Configuration
+
+Copy `.env` file and customize as needed:
+
+```bash
+# Port Configuration
+WEB_PORT=8090
+RTMP_PORT=1935
+
+# Backend Configuration
+API_PORT=8080
+CHECK_INTERVAL=2  # Health check interval in seconds
 ```
 
 ## 📁 Project Structure
@@ -60,14 +90,16 @@ stream-box/
 ## 🔌 API Endpoints
 
 ### `GET /api/info`
-Returns stream status.
+Returns stream status and information.
 
 ```json
 {
   "title": "Live Stream",
   "description": "Stream description",
   "announcement": "Ticker text",
-  "is_live": true
+  "is_live": true,
+  "uptime": 3600,
+  "viewer_count": 42
 }
 ```
 
@@ -82,6 +114,29 @@ Updates stream info (from Admin panel).
 }
 ```
 
+### `GET /api/health`
+Health check endpoint for monitoring.
+
+```json
+{
+  "status": "healthy",
+  "version": "2.0.0",
+  "uptime": 86400
+}
+```
+
+### `GET /api/stats`
+Detailed stream statistics.
+
+```json
+{
+  "is_live": true,
+  "uptime": 3600,
+  "viewer_count": 42,
+  "last_check": 1.5
+}
+```
+
 ## 🎨 Features
 
 - ✅ **Low Latency**: ~2-3 second delay with LLHLS
@@ -91,11 +146,59 @@ Updates stream info (from Admin panel).
 - ✅ **Basic Auth**: Password protected access
 - ✅ **Admin Panel**: Live stream info editing
 - ✅ **Responsive**: Mobile-friendly design
+- ✅ **Statistics**: Real-time uptime and viewer tracking
+- ✅ **Health Monitoring**: Docker health checks for all services
+- ✅ **Security Headers**: XSS, clickjacking, and MIME sniffing protection
+- ✅ **Compression**: Gzip compression for faster loading
+- ✅ **Caching**: Static asset caching for better performance
+- ✅ **Error Handling**: Robust error handling and logging
+- ✅ **Graceful Shutdown**: Proper service cleanup on shutdown
 
 ## 🔧 Tech Stack
 
-- **OvenMediaEngine** - Media server
+- **OvenMediaEngine** - Media server (RTMP → LLHLS)
 - **Nginx** - Web server & Reverse proxy
-- **Go** - Backend API
-- **HLS.js** - Video player
-- **Docker Compose** - Orchestration
+- **Go 1.21** - Backend API with graceful shutdown
+- **HLS.js** - Video player with error recovery
+- **Docker Compose** - Container orchestration
+- **Alpine Linux** - Lightweight container base
+
+```
+
+## 📝 Development
+
+### Rebuild after code changes:
+```bash
+docker compose down
+docker compose build --no-cache backend
+docker compose up -d
+```
+
+### View specific service logs:
+```bash
+docker compose logs -f backend
+docker compose logs -f engine
+docker compose logs -f web
+```
+
+### Check service health:
+```bash
+# Backend health
+curl http://localhost:8090/api/health
+
+# Stream info
+curl http://localhost:8090/api/info
+
+# Full stats
+curl http://localhost:8090/api/stats
+```
+
+## 🐛 Troubleshooting
+
+**Stream not appearing?**
+- Check OBS is connected: `docker compose logs engine`
+- Verify stream key is correct: `stream`
+
+**Can't access the page?**
+- Default credentials are in `nginx/htpasswd`
+- Port might be in use: Check `.env` file
